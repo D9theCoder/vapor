@@ -1,9 +1,7 @@
 #!/bin/bash
 
-echo "Building application..."
-
 # Install composer dependencies
-composer install --no-dev --optimize-autoloader
+composer install
 
 # Clear and cache config
 php artisan config:clear

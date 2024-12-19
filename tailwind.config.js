@@ -1,7 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 const defaultTheme = require("tailwindcss/defaultTheme");
+import { defineConfig } from 'tailwindcss';
 
-export default {
+
+export default defineConfig({
     content: [
         "./resources/**/*.blade.php",
         "./resources/**/*.js",
@@ -21,4 +23,4 @@ export default {
         require("@tailwindcss/forms"),
         require('@tailwindcss/line-clamp'),
     ],
-};
+});

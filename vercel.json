@@ -1,11 +1,12 @@
 {
+  "version": 2,
   "builds": [
     {
-      "src": "api/*.php",
+      "src": "api/index.php",
       "use": "@vercel/php"
     },
     {
-      "src": "resources/**/*.js",
+      "src": "resources/css/app.css",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "public"

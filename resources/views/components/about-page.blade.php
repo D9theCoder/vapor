@@ -55,10 +55,20 @@
         </div>
 
         <div class="flex items-center justify-between">
-          <button type="submit"
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-            Send Message
-          </button>
+          @auth
+            <button type="submit"
+              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+              Send Message
+            </button>
+          @else
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 w-full">
+              <div class="flex">
+                  <p class="text-sm text-yellow-700">
+                    Please login to give feedback
+                  </p>
+              </div>
+            </div>
+          @endauth
         </div>
       </form>
     </div>

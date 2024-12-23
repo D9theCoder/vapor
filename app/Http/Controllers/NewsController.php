@@ -41,7 +41,7 @@ class NewsController extends Controller
         $news = News::findOrFail($id);
 
         // Hanya pemilik berita yang dapat mengedit
-        if (auth()->id() !== $news->user_id) {
+        if (Auth::id() !== $news->user_id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -53,34 +53,38 @@ class NewsController extends Controller
         $news = News::findOrFail($id);
 
         // Hanya pemilik berita yang dapat memperbarui
-        if (auth()->id() !== $news->user_id) {
+        if (Auth::id() !== $news->user_id && Auth::user()->role !== 'admin' && Auth::user()->role !== 'superadmin') {
             abort(403, 'Unauthorized action.');
         }
 
-        $request->validate([
-            'title' => 'required|min:5|max:255',
-            'content' => 'required|min:10',
-        ], [
-            'title.required' => 'Title is required',
-            'title.min' => 'Title must be at least 5 characters',
-            'title.max' => 'Title cannot exceed 255 characters',
-            'content.required' => 'Content is required',
-            'content.min' => 'Content must be at least 10 characters'
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|min:5|max:255',
+                'content' => 'required|min:10',
+            ], [
+                'title.required' => 'Title is required',
+                'title.min' => 'Title must be at least 5 characters',
+                'title.max' => 'Title cannot exceed 255 characters',
+                'content.required' => 'Content is required',
+                'content.min' => 'Content must be at least 10 characters'
+            ]);
 
-        $news->update([
-            'title' => $request->title,
-            'content' => $request->content,
-        ]);
+            $news->update([
+                'title' => $validated['title'],
+                'content' => $validated['content'],
+            ]);
 
-        return redirect()->route('news.index')->with('success', 'News updated successfully.');
+            return response()->json(['message' => 'News updated successfully.']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        }
     }
 
-    public function destroy($id)
+    public function delete($id)
     {
         $news = News::findOrFail($id);
-
-        if (Auth::id() !== $news->user_id) {
+        // 
+        if (Auth::id() !== $news->user_id && Auth::user()->role !== 'admin' && Auth::user()->role !== 'superadmin') {  
             abort(403, 'Unauthorized action.');
         }
 

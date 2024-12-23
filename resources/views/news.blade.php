@@ -104,20 +104,22 @@
                 <div class="prose max-w-none overflow-hidden overflow-wrap break-word word-break break-words" id="content-{{ $item->id }}">
                     {!! $item->content !!}
                 </div>
-                @if (auth()->id() === $item->user_id || auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
-                    <div class="flex space-x-4 mt-4">
-                        <button type="button" 
-                            onclick="openEditModal('{{ $item->id }}', '{{ $item->title }}', `{!! $item->content !!}`)" 
-                            class="text-sm text-blue-600 hover:text-blue-500">
-                            Edit
-                        </button>
-                        <button type="button" 
-                            onclick="openDeleteModal('{{ $item->id }}')" 
-                            class="text-sm text-red-600 hover:text-red-500">
-                            Delete
-                        </button>
-                    </div>
-                @endif
+                @auth
+                    @if (auth()->id() === $item->user_id || auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
+                        <div class="flex space-x-4 mt-4">
+                            <button type="button" 
+                                onclick="openEditModal('{{ $item->id }}', '{{ $item->title }}', `{!! $item->content !!}`)" 
+                                class="text-sm text-blue-600 hover:text-blue-500">
+                                Edit
+                            </button>
+                            <button type="button" 
+                                onclick="openDeleteModal('{{ $item->id }}')" 
+                                class="text-sm text-red-600 hover:text-red-500">
+                                Delete
+                            </button>
+                        </div>
+                    @endif
+                @endauth
             </article>
         @endforeach
     </div>
@@ -165,17 +167,35 @@
                 <div>
                     <label for="editTitle" class="block text-sm font-medium text-gray-700">Title</label>
                     <input type="text" id="editTitle" name="title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    <span id="titleError" class="text-red-500 text-sm"></span>
+                    <span id="titleError" class="text-red-500 text-sm mt-1"></span>
                 </div>
 
                 <div>
                     <label for="editContent" class="block text-sm font-medium text-gray-700">Content</label>
-                    <div class="mt-1">
+                    <div class="mt-1 flex flex-col space-y-2">
+                        <!-- Add Formatting Menu -->
+                        <div class="flex space-x-2 bg-gray-100 p-2 rounded">
+                            <button type="button" onclick="formatEditDoc('bold')" class="px-3 py-1 bg-white rounded hover:bg-gray-50 format-btn" data-format="bold">
+                                <strong class="text-gray-500">B</strong>
+                            </button>
+                            <button type="button" onclick="formatEditDoc('italic')" class="px-3 py-1 bg-white rounded hover:bg-gray-50 format-btn" data-format="italic">
+                                <i class="text-gray-500">I</i>
+                            </button>
+                            <button type="button" onclick="formatEditDoc('underline')" class="px-3 py-1 bg-white rounded hover:bg-gray-50 format-btn" data-format="underline">
+                                <u class="text-gray-500">U</u>
+                            </button>
+                            <button type="button" onclick="formatEditDoc('insertOrderedList')" class="px-3 py-1 bg-white rounded hover:bg-gray-50 format-btn" data-format="orderedList">
+                                <span class="text-gray-500">1.</span>
+                            </button>
+                            <button type="button" onclick="formatEditDoc('insertUnorderedList')" class="px-3 py-1 bg-white rounded hover:bg-gray-50 format-btn" data-format="unorderedList">
+                                <span class="text-gray-500">•</span>
+                            </button>
+                        </div>
                         <div id="editEditor" contenteditable="true" 
                             class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 min-h-[150px] p-2"></div>
                         <input type="hidden" id="editHiddenContent" name="content">
+                        <span id="contentError" class="text-red-500 text-sm mt-1"></span>
                     </div>
-                    <span id="contentError" class="text-red-500 text-sm"></span>
                 </div>
 
                 <div class="flex justify-end space-x-3">
@@ -239,7 +259,7 @@
         const modal = document.getElementById('deleteModal');
         const deleteForm = document.getElementById('deleteForm');
         
-        deleteForm.action = `/news/${id}`;
+        deleteForm.action = `/news/${id}/delete`;  
         
         modal.classList.remove('hidden');
     }
@@ -256,13 +276,14 @@
     });
 
     function openEditModal(id, title, content) {
+        clearErrors();
         const modal = document.getElementById('editModal');
         const editForm = document.getElementById('editForm');
         const editTitle = document.getElementById('editTitle');
         const editEditor = document.getElementById('editEditor');
         const editHiddenContent = document.getElementById('editHiddenContent');
 
-        editForm.action = `/news/${id}`;
+        editForm.action = `/news/${id}/update`;
         
         editTitle.value = title;
         editEditor.innerHTML = content;
@@ -273,17 +294,16 @@
 
     function closeModal() {
         const modal = document.getElementById('editModal');
-        const titleError = document.getElementById('titleError');
-        const contentError = document.getElementById('contentError');
-
         modal.classList.add('hidden');
-
-        titleError.textContent = '';
-        contentError.textContent = '';
+        clearErrors();
     }
 
     document.getElementById('editForm').addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        // Clear previous error messages
+        document.getElementById('titleError').textContent = '';
+        document.getElementById('contentError').textContent = '';
         
         const editEditor = document.getElementById('editEditor');
         const editHiddenContent = document.getElementById('editHiddenContent');
@@ -299,19 +319,40 @@
                 body: formData
             });
 
+            const data = await response.json();
+
             if (response.ok) {
                 window.location.reload();
             } else {
-                const data = await response.json();
                 if (data.errors) {
-                    document.getElementById('titleError').textContent = data.errors.title?.[0] || '';
-                    document.getElementById('contentError').textContent = data.errors.content?.[0] || '';
+                    // Display validation errors
+                    Object.keys(data.errors).forEach(field => {
+                        const errorElement = document.getElementById(`${field}Error`);
+                        if (errorElement) {
+                            errorElement.textContent = data.errors[field][0];
+                        }
+                    });
+                    
+                    // Add error classes to inputs
+                    if (data.errors.title) {
+                        document.getElementById('editTitle').classList.add('border-red-500');
+                    }
+                    if (data.errors.content) {
+                        document.getElementById('editEditor').classList.add('border-red-500');
+                    }
                 }
             }
         } catch (error) {
             console.error('Error:', error);
         }
     });
+
+    function clearErrors() {
+        document.getElementById('titleError').textContent = '';
+        document.getElementById('contentError').textContent = '';
+        document.getElementById('editTitle').classList.remove('border-red-500');
+        document.getElementById('editEditor').classList.remove('border-red-500');
+    }
 
     document.getElementById('editModal').addEventListener('click', function(e) {
         if (e.target === this) {
@@ -540,6 +581,74 @@
     editor.addEventListener('click', function() {
         editor.focus();
     });
+
+    function formatEditDoc(command) {
+        if (command === 'insertOrderedList' || command === 'insertUnorderedList') {
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            
+            let currentBlock = range.startContainer;
+            while (currentBlock && currentBlock.nodeType !== 1) {
+                currentBlock = currentBlock.parentNode;
+            }
+            
+            const inList = currentBlock && (currentBlock.tagName === 'LI' || currentBlock.closest('li'));
+            
+            if (inList) {
+                const listItem = currentBlock.tagName === 'LI' ? currentBlock : currentBlock.closest('li');
+                const list = listItem.parentElement;
+                
+                const newParagraph = document.createElement('p');
+                newParagraph.innerHTML = listItem.innerHTML;
+                
+                if (list.children.length === 1) {
+                    list.parentNode.replaceChild(newParagraph, list);
+                } else {
+                    list.parentNode.insertBefore(newParagraph, list.nextSibling);
+                    listItem.remove();
+                }
+                
+                const newRange = document.createRange();
+                newRange.selectNodeContents(newParagraph);
+                newRange.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+            } else {
+                if (!isAtStartOfBlock(range)) {
+                    document.execCommand('insertParagraph', false, null);
+                }
+                document.execCommand(command, false, null);
+            }
+        } else {
+            document.execCommand(command, false, null);
+        }
+        
+        document.getElementById('editEditor').focus();
+        updateEditToolbar();
+    }
+
+    function updateEditToolbar() {
+        const editButtons = document.querySelectorAll('#editModal .format-btn');
+        editButtons.forEach(button => {
+            const format = button.dataset.format;
+            const isActive = queryFormat(format);
+            
+            if (isActive) {
+                button.classList.add('bg-gray-200');
+                button.querySelector('*').classList.remove('text-gray-500');
+                button.querySelector('*').classList.add('text-gray-900');
+            } else {
+                button.classList.remove('bg-gray-200');
+                button.querySelector('*').classList.remove('text-gray-900');
+                button.querySelector('*').classList.add('text-gray-500');
+            }
+        });
+    }
+
+    // Add event listeners for the edit editor
+    document.getElementById('editEditor').addEventListener('focus', updateEditToolbar);
+    document.getElementById('editEditor').addEventListener('input', updateEditToolbar);
+
 </script>
 
 <style>

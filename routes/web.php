@@ -110,6 +110,11 @@ Route::get('/profile/reset-photo', [UserController::class, 'resetProfilePhoto'])
 
 // News Routes
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-Route::post('/news', [NewsController::class, 'store'])->name('news.store')->middleware('auth');
+Route::post('/news', [NewsController::class, 'store'])->middleware('auth')->name('news.store');
+Route::put('/news/{id}/update', [NewsController::class, 'update'])->middleware('auth')->name('news.update');
+Route::delete('/news/{id}/delete', [NewsController::class, 'delete'])->middleware('auth')->name('news.delete');
+// Route::get('/news-edit/{id}', [NewsController::class, 'edit'])->middleware('auth')->name('news.edit');
+
+
 // Route::resource('news', NewsController::class)->middleware('auth');
 
